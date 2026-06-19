@@ -89,6 +89,21 @@ function pageInit () {
       parseStorageToHistory(historyList, parseHistoryCallback)
     }
   )
+  setTimeout(refreshUserMenu, 500)
+}
+
+function refreshUserMenu () {
+  $.get(`${serverurl}/me`).done(data => {
+    if (!data || data.status !== 'ok') return
+
+    $('.ui-signin').hide()
+    $('.ui-or').hide()
+    $('.ui-welcome').show()
+    if (data.photo) $('.ui-avatar').prop('src', data.photo).show()
+    else $('.ui-avatar').prop('src', '').hide()
+    $('.ui-name').html(data.name)
+    $('.ui-signout').show()
+  })
 }
 
 $('.masthead-nav li').click(function () {
@@ -205,10 +220,23 @@ historyList.on('updated', e => {
   $('.ui-history-pin').on('click', historyPinClick)
 })
 
+function getHistoryItemFromControl (control) {
+  const listItem = $(control).closest('li')[0]
+  if (!listItem) return null
+
+  for (let i = 0; i < historyList.items.length; i++) {
+    if (historyList.items[i].elm === listItem) return historyList.items[i]
+  }
+  return null
+}
+
 function historyCloseClick (e) {
   e.preventDefault()
-  const id = $(this).closest('a').siblings('span').html()
-  const value = historyList.get('id', id)[0]._values
+  const item = getHistoryItemFromControl(this)
+  if (!item) return
+
+  const value = item._values
+  const id = value.id
   $('.ui-delete-history-modal-msg').text('Do you really want to delete below history?')
   $('.ui-delete-history-modal-item').html(`<i class="fa fa-file-text"></i> ${value.text}<br><i class="fa fa-clock-o"></i> ${value.time}`)
   clearHistory = false
@@ -218,8 +246,10 @@ function historyCloseClick (e) {
 function historyPinClick (e) {
   e.preventDefault()
   const $this = $(this)
-  const id = $this.closest('a').siblings('span').html()
-  const item = historyList.get('id', id)[0]
+  const item = getHistoryItemFromControl(this)
+  if (!item) return
+
+  const id = item._values.id
   const values = item._values
   let pinned = values.pinned
   if (!values.pinned) {
